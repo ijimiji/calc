@@ -1,5 +1,7 @@
 on:
-  push
+  push:
+    branches:
+      - master
 
 name: Latest Release
 
@@ -38,6 +40,7 @@ jobs:
       - name: Build
         run: |
           go build -o "$BINARY_NAME" -v ./cmd/calc
+          chmod +x "$BINARY_NAME"
       - name: Create Release
         uses: actions/create-release@v1
         id: create_release
