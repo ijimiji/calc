@@ -25,7 +25,7 @@ jobs:
       run: echo BUILD_TIME=$(date) >> ${GITHUB_ENV}
 
     - name: Install packages
-      run: sudo apt update && sudo apt-get install golang gcc libgl1-mesa-dev xorg-dev
+      run: sudo apt-get update && sudo apt-get install gcc libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev xorg-dev libwayland-dev libxkbcommon-dev bc
     
     - name: Environment Printer
       uses: managedkaos/print-env@v1.0
