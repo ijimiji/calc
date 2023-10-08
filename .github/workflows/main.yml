@@ -54,5 +54,6 @@ jobs:
           asset_name: calc
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ${{env.BINARY_NAME}}
+          asset_content_type: application/octet-stream
         env:
           GITHUB_TOKEN: ${{ secrets.TOKEN }}
