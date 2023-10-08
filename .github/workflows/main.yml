@@ -1,39 +1,51 @@
 on:
   push
 
-permissions:
-    contents: write
-    packages: write
+name: Latest Release
 
-env:
-  CMD_PATH: ./cmd/calc
+defaults:
+  run:
+    shell: bash
 
 jobs:
-  releases-matrix:
-    name: Release Matrix
-    runs-on: ubuntu-latest
+  release:
+    name: Create Release
+    runs-on: 'ubuntu-latest'
     strategy:
       matrix:
-        goos: [linux]
-        goarch: [amd64]
+        goosarch:
+          - 'linux/amd64'
     steps:
-    - uses: actions/checkout@v2
-
-    - name: Set APP_VERSION env
-      run: echo APP_VERSION=$(echo ${GITHUB_REF} | rev | cut -d'/' -f 1 | rev ) >> ${GITHUB_ENV}
-    - name: Set BUILD_TIME env
-      run: echo BUILD_TIME=$(date) >> ${GITHUB_ENV}
-
-    - name: Install packages
-      run: sudo apt-get update && sudo apt-get install gcc libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev xorg-dev libwayland-dev libxkbcommon-dev bc
-    
-    - name: Environment Printer
-      uses: managedkaos/print-env@v1.0
-
-    - uses: wangyoucao577/go-release-action@v1.40
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        goos: ${{ matrix.goos }}
-        goarch: ${{ matrix.goarch }}
-        project_path: "${{ env.CMD_PATH }}"
-        build_flags: -v
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Get dependencies
+        run: sudo apt-get update && sudo apt-get install gcc libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev xorg-dev libwayland-dev libxkbcommon-dev bc
+        if: ${{ runner.os == 'Linux' }}
+      - uses: actions/setup-go@v3
+        with:
+          go-version: '1.21.1'
+      - name: Get OS and arch info
+        run: |
+          GOOSARCH=${{matrix.goosarch}}
+          GOOS=${GOOSARCH%/*}
+          GOARCH=${GOOSARCH#*/}
+          BINARY_NAME=${{github.repository}}-$GOOS-$GOARCH
+          echo "BINARY_NAME=$BINARY_NAME" >> $GITHUB_ENV
+          echo "GOOS=$GOOS" >> $GITHUB_ENV
+          echo "GOARCH=$GOARCH" >> $GITHUB_ENV
+      - name: Build
+        run: |
+          go build -o "$BINARY_NAME" -v
+      - name: Release Notes
+        run:
+          git log $(git describe HEAD~ --tags --abbrev=0)..HEAD --pretty='format:* %h %s%n  * %an <%ae>' --no-merges >> ".github/RELEASE-TEMPLATE.md"
+      - name: Release with Notes
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: ".github/RELEASE-TEMPLATE.md"
+          draft: true
+          files: ${{env.BINARY_NAME}}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
