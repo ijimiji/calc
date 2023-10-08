@@ -36,7 +36,6 @@ func (c *Calculator) eval(node ast.Expr) ast.Expr {
 	case *ast.UnaryExpr:
 		return c.negative(node.(*ast.UnaryExpr))
 	}
-
 	return nil
 }
 
