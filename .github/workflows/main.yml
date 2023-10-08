@@ -44,8 +44,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.TOKEN }} # This token is provided by Actions
         with:
-          tag_name: calc-${{ steps.vars.outputs.date }}
-          release_name: calc (version ${{ steps.vars.outputs.date }})
+          tag_name: calc
+          release_name: calc (version latest)
           draft: false
           prerelease: false
       - name: Upload binary
