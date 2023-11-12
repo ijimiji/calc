@@ -2,7 +2,10 @@ module calc
 
 go 1.21.1
 
-require fyne.io/fyne v1.4.3
+require (
+	fyne.io/fyne v1.4.3
+	github.com/shopspring/decimal v1.3.1
+)
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect

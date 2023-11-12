@@ -12,6 +12,12 @@ import (
 	"fyne.io/fyne/widget"
 )
 
+const (
+	mathRounding   = "Математическое округление"
+	accRounding    = "Бухгалтерское округление"
+	simpleRounding = "Усечение"
+)
+
 func New(calculator *calculator.Calculator) *View {
 	v := &View{
 		calc: calculator,
@@ -20,8 +26,19 @@ func New(calculator *calculator.Calculator) *View {
 	v.window = v.app.NewWindow("calculator")
 	v.input = widget.NewEntry()
 	v.result = widget.NewLabel("")
+	v.rounded = widget.NewLabel("")
+	v.method = widget.NewRadioGroup([]string{
+		mathRounding,
+		accRounding,
+		simpleRounding,
+	}, func(s string) {
+
+	})
 	v.result.TextStyle = fyne.TextStyle{Monospace: true}
 	v.result.Alignment = fyne.TextAlignTrailing
+
+	v.rounded.TextStyle = fyne.TextStyle{Monospace: true}
+	v.rounded.Alignment = fyne.TextAlignTrailing
 
 	v.window.SetContent(
 		v.numpad(),
@@ -46,6 +63,8 @@ type View struct {
 	input     *widget.Entry
 	form      *widget.Form
 	result    *widget.Label
+	rounded   *widget.Label
+	method    *widget.RadioGroup
 	lastInput string
 	lock      bool
 }
@@ -62,13 +81,42 @@ func (v *View) numpad() *fyne.Container {
 			v.showError(err.Error())
 			return
 		}
-		v.result.SetText(res)
+		var rounded string
+		switch v.method.Selected {
+		case mathRounding:
+			res, err := v.calc.RoundMath(res)
+			if err != nil {
+				v.showError(err.Error())
+				return
+			}
+			rounded = res
+		case simpleRounding:
+			res, err := v.calc.RoundSimple(res)
+			if err != nil {
+				v.showError(err.Error())
+				return
+			}
+			rounded = res
+		case accRounding:
+			res, err := v.calc.RoundAccounting(res)
+			if err != nil {
+				v.showError(err.Error())
+				return
+			}
+			rounded = res
+		}
+
+		v.rounded.SetText(v.calc.Format(rounded))
+		v.result.SetText(v.calc.Format(res))
 	})
 	equals.Importance = widget.HighImportance
 
 	return container.NewGridWithColumns(1,
 		v.input,
-		v.result,
+		container.NewGridWithColumns(2,
+			v.method,
+			container.NewGridWithRows(2, v.result, v.rounded),
+		),
 		container.NewGridWithColumns(4,
 			v.digit(7),
 			v.digit(8),
@@ -90,10 +138,7 @@ func (v *View) numpad() *fyne.Container {
 			v.char("."),
 			v.char("/"),
 		),
-		container.NewGridWithColumns(4,
-			v.char("round1"),
-			v.char("round2"),
-			v.char("round3"),
+		container.NewGridWithColumns(1,
 			equals,
 		),
 		widget.NewLabelWithStyle("Ларин Егор Сергеевич, 4 курс, 4 группа, 2023", fyne.TextAlignCenter, fyne.TextStyle{Monospace: true}),
