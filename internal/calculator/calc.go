@@ -20,6 +20,9 @@ type Calculator struct {
 }
 
 func (c *Calculator) Eval(expr string) (string, error) {
+	expr = strings.Join(strings.Fields(expr), "")
+	expr = strings.ReplaceAll(expr, ",", ".")
+	expr = "(" + expr + ")"
 	fs := token.NewFileSet()
 	tr, _ := parser.ParseExpr(expr)
 	ast.Print(fs, tr)
@@ -27,6 +30,9 @@ func (c *Calculator) Eval(expr string) (string, error) {
 	e, err := c.eval(tr)
 	if err != nil {
 		return "", err
+	}
+	if e == nil {
+		return "", fmt.Errorf("invalid expr")
 	}
 
 	return e.(*ast.BasicLit).Value, nil
@@ -69,15 +75,26 @@ func (c *Calculator) eval(node ast.Expr) (ast.Expr, error) {
 		return node, nil
 	case *ast.UnaryExpr:
 		return c.negative(node.(*ast.UnaryExpr)), nil
+	case *ast.ParenExpr:
+		return c.eval(node.(*ast.ParenExpr).X)
 	}
 	return nil, nil
 }
 
 func (c *Calculator) negative(node *ast.UnaryExpr) *ast.BasicLit {
-	return node.X.(*ast.BasicLit)
+	val := node.X.(*ast.BasicLit)
+	val.Value = "-" + val.Value
+	return val
+}
+
+func (c *Calculator) formatDecimal(d decimal.Decimal) string {
+	return d.StringFixedBank(prec)
 }
 
 func (c *Calculator) evalBinary(node *ast.BinaryExpr) (*ast.BasicLit, error) {
+	if node == nil {
+		return nil, fmt.Errorf("nil node")
+	}
 	x, err := c.eval(node.X)
 	if err != nil {
 		return nil, fmt.Errorf("can't eval x: %v", err)
@@ -98,22 +115,22 @@ func (c *Calculator) evalBinary(node *ast.BinaryExpr) (*ast.BasicLit, error) {
 
 	switch node.Op {
 	case token.ADD:
-		res := &ast.BasicLit{Value: a.Add(b).String(), Kind: token.FLOAT}
+		res := &ast.BasicLit{Value: c.formatDecimal(a.Add(b)), Kind: token.FLOAT}
 		fmt.Printf("%s %s %s = %s\n", a.String(), node.Op.String(), b.String(), res.Value)
 		return res, nil
 	case token.SUB:
-		res := &ast.BasicLit{Value: a.Sub(b).String(), Kind: token.FLOAT}
+		res := &ast.BasicLit{Value: c.formatDecimal(a.Sub(b)), Kind: token.FLOAT}
 		fmt.Printf("%s %s %s = %s\n", a.String(), node.Op.String(), b.String(), res.Value)
 		return res, nil
 	case token.MUL:
-		res := &ast.BasicLit{Value: a.Mul(b).String(), Kind: token.FLOAT}
+		res := &ast.BasicLit{Value: c.formatDecimal(a.Mul(b)), Kind: token.FLOAT}
 		fmt.Printf("%s %s %s = %s\n", a.String(), node.Op.String(), b.String(), res.Value)
 		return res, nil
 	case token.QUO:
 		if b.Equal(decimal.NewFromInt(0)) {
 			return nil, fmt.Errorf("zero division encountered")
 		}
-		res := &ast.BasicLit{Value: a.DivRound(b, 6).String(), Kind: token.FLOAT}
+		res := &ast.BasicLit{Value: c.formatDecimal(a.DivRound(b, 6)), Kind: token.FLOAT}
 		fmt.Printf("%s %s %s = %s\n", a.String(), node.Op.String(), b.String(), res.Value)
 		return res, nil
 	}
