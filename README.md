@@ -7,4 +7,4 @@
 Find latest release with `calc` executable for Linux/amd64.
 Change permissions to executable with `chmod +x calc` and simply run with `./calc`.
 # Demo
-![alt text](./static/1.jpg)
+![alt text](./static/1.png)
