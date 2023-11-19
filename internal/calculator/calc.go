@@ -20,6 +20,9 @@ type Calculator struct {
 }
 
 func (c *Calculator) Eval(expr string) (string, error) {
+	if strings.ContainsAny(expr, "eеЕE") {
+		return "", fmt.Errorf("вообще, я могу считать такие вещи, но мне нельзя считать выражения в научной нотации")
+	}
 	expr = strings.Join(strings.Fields(expr), "")
 	expr = strings.ReplaceAll(expr, ",", ".")
 	expr = "(" + expr + ")"
@@ -32,7 +35,7 @@ func (c *Calculator) Eval(expr string) (string, error) {
 		return "", err
 	}
 	if e == nil {
-		return "", fmt.Errorf("invalid expr")
+		return "", fmt.Errorf("слишком упоротое выражение")
 	}
 
 	return e.(*ast.BasicLit).Value, nil
@@ -93,24 +96,24 @@ func (c *Calculator) formatDecimal(d decimal.Decimal) string {
 
 func (c *Calculator) evalBinary(node *ast.BinaryExpr) (*ast.BasicLit, error) {
 	if node == nil {
-		return nil, fmt.Errorf("nil node")
+		return nil, fmt.Errorf("что-то пошло не так")
 	}
 	x, err := c.eval(node.X)
 	if err != nil {
-		return nil, fmt.Errorf("can't eval x: %v", err)
+		return nil, err
 	}
 	a, err := decimal.NewFromString(x.(*ast.BasicLit).Value)
 	if err != nil {
-		return nil, fmt.Errorf("can't parse number: %v", err)
+		return nil, fmt.Errorf("не могу распарсить число: %v", x.(*ast.BasicLit).Value)
 	}
 
 	y, err := c.eval(node.Y)
 	if err != nil {
-		return nil, fmt.Errorf("can't eval x: %v", err)
+		return nil, err
 	}
 	b, err := decimal.NewFromString(y.(*ast.BasicLit).Value)
 	if err != nil {
-		return nil, fmt.Errorf("can't parse number: %v", err)
+		return nil, fmt.Errorf("не могу распарсить число: %v", y.(*ast.BasicLit).Value)
 	}
 
 	switch node.Op {
@@ -128,13 +131,13 @@ func (c *Calculator) evalBinary(node *ast.BinaryExpr) (*ast.BasicLit, error) {
 		return res, nil
 	case token.QUO:
 		if b.Equal(decimal.NewFromInt(0)) {
-			return nil, fmt.Errorf("zero division encountered")
+			return nil, fmt.Errorf("деление на ноль")
 		}
 		res := &ast.BasicLit{Value: c.formatDecimal(a.DivRound(b, 6)), Kind: token.FLOAT}
 		fmt.Printf("%s %s %s = %s\n", a.String(), node.Op.String(), b.String(), res.Value)
 		return res, nil
 	}
-	return nil, fmt.Errorf("unknow op encountered")
+	return nil, fmt.Errorf("неизвестная операция")
 }
 
 func (c *Calculator) Format(s string) string {
@@ -159,5 +162,16 @@ func (c *Calculator) Format(s string) string {
 		result = append(result, []rune("."+decimalPart)...)
 	}
 
-	return string(result)
+	ret := string(result)
+
+	if !strings.Contains(ret, ".") {
+		return ret
+	}
+
+	ps := strings.Split(ret, ".")
+	if strings.Count(ps[1], "0") == len(ps[1]) {
+		return ps[0]
+	}
+
+	return strings.TrimRight(ret, "0")
 }
